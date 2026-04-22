@@ -5,7 +5,7 @@ A full-stack AI-powered medical dashboard built using Flask, Machine Learning, a
 ---
 
 ## 🚀 Live Demo
-👉 https://your-render-url.onrender.com
+👉 https://medical-platform-zwn1.onrender.com/
 
 ---
 
