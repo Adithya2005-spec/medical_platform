@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}Mood Tracker — Medical AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">🧠 Mental Health Mood Tracker</div>
+  <div class="page-sub">NLP Sentiment Analysis · Daily Journal</div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="sec-label">New Entry</div>
+    <form id="moodForm">
+      <div class="form-group"><label>Patient</label>
+        <select name="patient_id" class="input" required>
+          <option value="">— Select Patient —</option>
+          {% for p in patients %}
+          <option value="{{ p.PatientID }}">[{{ p.PatientID }}] {{ p.Name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Mood Score: <span id="moodVal">5</span> / 10</label>
+        <input type="range" name="mood_score" min="1" max="10" value="5" class="slider"
+               oninput="document.getElementById('moodVal').textContent=this.value"/>
+        <div class="slider-labels"><span>😔 Low</span><span>😊 High</span></div>
+      </div>
+      <div class="form-group">
+        <label>Journal Entry</label>
+        <textarea name="journal_text" class="input textarea"
+                  placeholder="How are you feeling today?" rows="4"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">💾 Save & Analyse</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card" id="sentCard" style="display:none;">
+      <div class="sec-label">Sentiment Result</div>
+      <div id="sentBadge"></div>
+      <div class="conf-row" style="margin-top:0.8rem;">
+        <span class="conf-label">POLARITY</span>
+        <span class="conf-pct" id="polVal">—</span>
+      </div>
+      <div class="conf-bar-wrap"><div class="conf-bar-fill" id="polBar"></div></div>
+    </div>
+
+    <div class="card" id="moodChartCard" style="display:none;">
+      <div class="sec-label">Mood Trend</div>
+      <canvas id="moodTrendChart" height="160"></canvas>
+    </div>
+
+    <div id="moodSpinner" class="spinner-wrap" style="display:none;">
+      <div class="spinner"></div><span>Analysing…</span>
+    </div>
+  </div>
+</div>
+
+<div id="chartsRow" class="charts-row" style="margin-top:1.5rem;display:none;">
+  <div class="card">
+    <div class="sec-label">Sentiment Distribution</div>
+    <canvas id="sentPieChart"></canvas>
+  </div>
+  <div class="card">
+    <div class="sec-label">Top Keywords</div>
+    <canvas id="kwChart"></canvas>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let moodTrendChart = null, sentPieChart = null, kwChart = null;
+
+document.getElementById('moodForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const data = new FormData(e.target);
+  document.getElementById('sentCard').style.display   = 'none';
+  document.getElementById('moodChartCard').style.display = 'none';
+  document.getElementById('moodSpinner').style.display = 'flex';
+
+  try {
+    const res  = await fetch('/mood/add', {method:'POST', body:data});
+    const json = await res.json();
+    document.getElementById('moodSpinner').style.display = 'none';
+    if (json.error) { alert(json.error); return; }
+
+    const colors = {Positive:'#4ade80', Neutral:'#fbbf24', Negative:'#f87171'};
+    const c = colors[json.label] || '#60a5fa';
+    const polPct = ((json.polarity + 1) / 2 * 100).toFixed(1);
+    document.getElementById('sentBadge').innerHTML =
+      `<span class="badge badge-lg" style="background:${c}22;color:${c};border-color:${c}66;">${json.label}</span>`;
+    document.getElementById('polVal').textContent   = json.polarity > 0 ? '+'+json.polarity : json.polarity;
+    document.getElementById('polBar').style.width   = polPct + '%';
+    document.getElementById('polBar').style.background = c;
+    document.getElementById('sentCard').style.display = 'block';
+
+    // Mood trend
+    if (json.dates.length) {
+      document.getElementById('moodChartCard').style.display = 'block';
+      if (moodTrendChart) moodTrendChart.destroy();
+      moodTrendChart = new Chart(document.getElementById('moodTrendChart'), {
+        type: 'line',
+        data: { labels: json.dates, datasets: [{
+          label: 'Mood', data: json.mood_scores,
+          borderColor:'#60a5fa', backgroundColor:'rgba(59,130,246,0.08)',
+          pointBackgroundColor:'#93c5fd', tension:0.4, fill:true
+        }]},
+        options: { scales: {
+          y:{min:0,max:10,grid:{color:'#0e1a2b'},ticks:{color:'#8899b4'}},
+          x:{grid:{color:'#0e1a2b'},ticks:{color:'#8899b4',maxTicksLimit:6}}
+        }, plugins:{legend:{display:false}} }
+      });
+    }
+
+    // Pie + keywords
+    if (json.sent_labels.length || json.kw_labels.length) {
+      document.getElementById('chartsRow').style.display = 'grid';
+      if (sentPieChart) sentPieChart.destroy();
+      sentPieChart = new Chart(document.getElementById('sentPieChart'), {
+        type: 'doughnut',
+        data: { labels: json.sent_labels, datasets:[{
+          data: json.sent_counts,
+          backgroundColor:['#4ade80','#fbbf24','#f87171'],
+          borderColor:'#0c1220', borderWidth:3
+        }]},
+        options: { cutout:'55%', plugins:{legend:{labels:{color:'#8899b4',font:{family:'Karla'}}}} }
+      });
+
+      if (kwChart) kwChart.destroy();
+      kwChart = new Chart(document.getElementById('kwChart'), {
+        type:'bar',
+        data:{ labels: json.kw_labels, datasets:[{
+          data: json.kw_values, backgroundColor:'#6366f1',
+          borderRadius:4, borderColor:'transparent'
+        }]},
+        options:{
+          indexAxis:'y',
+          plugins:{legend:{display:false}},
+          scales:{
+            x:{grid:{color:'#0e1a2b'},ticks:{color:'#8899b4'}},
+            y:{grid:{display:false},ticks:{color:'#aab4c8'}}
+          }
+        }
+      });
+    }
+  } catch(err) {
+    document.getElementById('moodSpinner').style.display = 'none';
+    alert('Error: ' + err);
+  }
+});
+</script>
+{% endblock %}

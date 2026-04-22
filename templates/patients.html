@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Patients - Medical AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title">Patient Management</h1>
+    <p class="page-sub">Register and manage hospital patients</p>
+</div>
+
+<div class="two-col">
+    <!-- Add Patient Form -->
+    <div class="card">
+        <div class="sec-label">Register New Patient</div>
+        <form action="{{ url_for('patients_add') }}" method="POST">
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" name="name" class="input" placeholder="e.g. John Doe" required>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Age</label>
+                    <input type="number" name="age" class="input" value="30" required>
+                </div>
+                <div class="form-group">
+                    <label>Gender</label>
+                    <select name="gender" class="input">
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Contact Info (Email/Phone)</label>
+                <input type="text" name="contact" class="input" placeholder="e.g. john@example.com">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; margin-top: 0.5rem;">
+                <span>Register Patient</span>
+            </button>
+        </form>
+    </div>
+
+    <!-- Patient List -->
+    <div class="card">
+        <div class="sec-label">Patient Directory</div>
+        
+        <form action="{{ url_for('patients') }}" method="GET" style="margin-bottom: 1.2rem;">
+            <div style="display: flex; gap: 0.5rem;">
+                <input type="text" name="q" class="input" placeholder="Search by name or ID..." value="{{ q }}">
+                <button type="submit" class="btn btn-secondary">Search</button>
+            </div>
+        </form>
+
+        {% if patients %}
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Age/Sex</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in patients %}
+                    <tr>
+                        <td><code>#{{ p.PatientID }}</code></td>
+                        <td>
+                            <div style="font-weight: 700; color: #f0f4ff;">{{ p.Name }}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-faint);">{{ p.Contact or 'No contact' }}</div>
+                        </td>
+                        <td>{{ p.Age }} / {{ p.Gender[0] }}</td>
+                        <td>
+                            <div style="display: flex; gap: 0.4rem;">
+                                <a href="{{ url_for('history', pid=p.PatientID) }}" class="btn btn-secondary btn-xs">History</a>
+                                <form action="{{ url_for('patients_delete') }}" method="POST" onsubmit="return confirm('Delete this patient and all records?')">
+                                    <input type="hidden" name="pid" value="{{ p.PatientID }}">
+                                    <button type="submit" class="btn btn-danger btn-xs">Delete</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-msg">No patients found.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Drug Checker — Medical AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">💊 Drug Interaction Checker</div>
+  <div class="page-sub">25+ Known Interaction Pairs · Clinical Guidance</div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="sec-label">Enter Drugs</div>
+    <form id="drugForm">
+      <div class="form-group"><label>Patient</label>
+        <select name="patient_id" class="input" required>
+          <option value="">— Select Patient —</option>
+          {% for p in patients %}
+          <option value="{{ p.PatientID }}">[{{ p.PatientID }}] {{ p.Name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="sec-label" style="margin-top:1rem;">Up to 5 Drug Names</div>
+      {% for i in range(1,6) %}
+      <div class="form-group">
+        <input type="text" name="drug{{ i }}" class="input"
+               placeholder="Drug {{ i }}{% if i <= 2 %} (required){% endif %}"/>
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn btn-primary" style="width:100%;">🔍 Check Interactions</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card" id="drugResultCard" style="display:none;">
+      <div class="sec-label">Interaction Assessment</div>
+      <div id="drugSevBadge" style="margin-bottom:1rem;"></div>
+      <div id="drugInteractions"></div>
+      <p style="font-size:0.7rem;color:#2d4060;margin-top:1rem;">
+        ⚠️ For educational purposes only. Always consult a clinical pharmacist.
+      </p>
+    </div>
+    <div id="drugSpinner" class="spinner-wrap" style="display:none;">
+      <div class="spinner"></div><span>Checking…</span>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:1.5rem;">
+  <div class="sec-label">Common Interaction Reference</div>
+  <table class="data-table">
+    <thead><tr><th>Drug A</th><th>Drug B</th><th>Severity</th><th>Concern</th></tr></thead>
+    <tbody>
+      {% for r in reference %}
+      <tr>
+        <td>{{ r.A }}</td><td>{{ r.B }}</td>
+        <td>
+          {% if r.Severity == 'Severe' %}<span class="badge badge-danger">🚨 Severe</span>
+          {% else %}<span class="badge badge-warn">⚠️ Moderate</span>{% endif %}
+        </td>
+        <td style="color:#8899b4;font-size:0.82rem;">{{ r.Concern }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('drugForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const data = new FormData(e.target);
+  document.getElementById('drugResultCard').style.display = 'none';
+  document.getElementById('drugSpinner').style.display    = 'flex';
+
+  try {
+    const res  = await fetch('/drugs/check', {method:'POST', body:data});
+    const json = await res.json();
+    document.getElementById('drugSpinner').style.display = 'none';
+    if (json.error) { alert(json.error); return; }
+
+    const sevColors  = {Severe:'#f87171', Moderate:'#fbbf24', None:'#4ade80'};
+    const sevIcons   = {Severe:'🚨', Moderate:'⚠️', None:'✅'};
+    const c = sevColors[json.max_severity] || '#60a5fa';
+    document.getElementById('drugSevBadge').innerHTML =
+      `<span class="badge badge-lg" style="background:${c}22;color:${c};border-color:${c}66;">
+         ${sevIcons[json.max_severity]} ${json.max_severity} Risk
+       </span>
+       <div style="font-size:0.75rem;color:#4a6080;margin-top:0.4rem;">Drugs checked: ${json.drugs}</div>`;
+
+    let html = '';
+    if (json.interactions.length) {
+      json.interactions.forEach(ix => {
+        const bc = ix.severity === 'Severe' ? '#f87171' : '#fbbf24';
+        html += `<div style="background:${bc}11;border-left:3px solid ${bc};
+                             border-radius:6px;padding:0.7rem 1rem;margin-bottom:0.6rem;">
+          <div style="font-size:0.85rem;font-weight:700;color:${bc};">
+            ${ix.drug1} ↔ ${ix.drug2}
+            <span style="font-size:0.7rem;opacity:0.7;margin-left:6px;">${ix.severity}</span>
+          </div>
+          <div style="font-size:0.78rem;color:#8899b4;margin-top:3px;">${ix.details}</div>
+        </div>`;
+      });
+    } else {
+      html = '<p style="color:#4ade80;font-size:0.85rem;">✅ No known interactions found.</p>';
+    }
+    document.getElementById('drugInteractions').innerHTML = html;
+    document.getElementById('drugResultCard').style.display = 'block';
+  } catch(err) {
+    document.getElementById('drugSpinner').style.display = 'none';
+    alert('Error: ' + err);
+  }
+});
+</script>
+{% endblock %}

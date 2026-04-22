@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+{% block title %}Image Classifier — Medical AI{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">🫁 Medical Image Classifier</div>
+  <div class="page-sub">ResNet18 · Top-3 Predictions · Demo Mode</div>
+</div>
+
+<div class="two-col">
+  <div class="card">
+    <div class="sec-label">Upload & Classify</div>
+    <form id="imgForm" enctype="multipart/form-data">
+      <div class="form-group"><label>Patient</label>
+        <select name="patient_id" class="input" required>
+          <option value="">— Select Patient —</option>
+          {% for p in patients %}
+          <option value="{{ p.PatientID }}">[{{ p.PatientID }}] {{ p.Name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group"><label>Image Type</label>
+        <select name="image_type" class="input">
+          {% for t in image_types %}<option>{{ t }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Medical Image (JPG / PNG)</label>
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('imgFile').click()">
+          <div class="drop-icon">📁</div>
+          <div class="drop-text">Click or drag & drop image here</div>
+          <div class="drop-sub" id="fileName">JPG, PNG supported</div>
+        </div>
+        <input type="file" name="image_file" id="imgFile" accept="image/*"
+               style="display:none" onchange="previewFile(this)"/>
+      </div>
+      <div id="imgPreviewWrap" style="display:none;margin-bottom:1rem;">
+        <img id="imgPreview" style="max-width:100%;border-radius:8px;border:1px solid #1e2a45;"/>
+      </div>
+      <button type="submit" class="btn btn-primary" style="width:100%;">🔬 Classify Image</button>
+    </form>
+  </div>
+
+  <div>
+    <div class="card" id="imgResultCard" style="display:none;">
+      <div class="sec-label">Classification Results</div>
+      <div id="imgTypeLabel" style="font-size:0.75rem;color:#4a6080;margin-bottom:1rem;"></div>
+      <div id="imgResults"></div>
+      <p style="font-size:0.7rem;color:#2d4060;margin-top:1rem;">
+        ℹ️ Demo predictions shown. Fine-tune ResNet18 on domain data for clinical use.
+      </p>
+    </div>
+    <div id="imgSpinner" class="spinner-wrap" style="display:none;">
+      <div class="spinner"></div><span>Running inference…</span>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function previewFile(input) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      document.getElementById('imgPreview').src = e.target.result;
+      document.getElementById('imgPreviewWrap').style.display = 'block';
+      document.getElementById('fileName').textContent = input.files[0].name;
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    document.getElementById('imgFile').files = e.dataTransfer.files;
+    previewFile(document.getElementById('imgFile'));
+  }
+});
+
+document.getElementById('imgForm').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const data = new FormData(e.target);
+  if (!data.get('image_file').size) { alert('Please upload an image.'); return; }
+  document.getElementById('imgResultCard').style.display = 'none';
+  document.getElementById('imgSpinner').style.display    = 'flex';
+
+  try {
+    const res  = await fetch('/image/classify', {method:'POST', body:data});
+    const json = await res.json();
+    document.getElementById('imgSpinner').style.display = 'none';
+    if (json.error) { alert(json.error); return; }
+
+    document.getElementById('imgTypeLabel').textContent = 'Image Type: ' + json.image_type;
+    const colors = ['#3b82f6','#6366f1','#8b5cf6'];
+    const medals = ['🥇','🥈','🥉'];
+    let html = '';
+    json.results.forEach((r, i) => {
+      html += `<div style="margin-bottom:1rem;">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem;
+                    color:#aab4c8;margin-bottom:4px;">
+          <span>${medals[i]} ${r.label}</span>
+          <span style="color:${colors[i]};font-weight:700;">${r.confidence}%</span>
+        </div>
+        <div class="conf-bar-wrap">
+          <div class="conf-bar-fill" style="width:${r.confidence}%;background:${colors[i]};"></div>
+        </div>
+      </div>`;
+    });
+    document.getElementById('imgResults').innerHTML = html;
+    document.getElementById('imgResultCard').style.display = 'block';
+  } catch(err) {
+    document.getElementById('imgSpinner').style.display = 'none';
+    alert('Error: ' + err);
+  }
+});
+</script>
+{% endblock %}

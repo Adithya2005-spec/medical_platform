@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Medical AI{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div class="page-title">🏥 Medical AI Platform</div>
+  <div class="page-sub">Unified Clinical Decision Support · v2.0</div>
+</div>
+
+<!-- Metric Cards -->
+<div class="metrics-grid">
+  <div class="metric-card">
+    <div class="metric-icon">🧑‍⚕️</div>
+    <div class="metric-label">Patients</div>
+    <div class="metric-value">{{ counts.patients }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-icon">🩸</div>
+    <div class="metric-label">Diabetes Checks</div>
+    <div class="metric-value">{{ counts.diabetes }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-icon">🧠</div>
+    <div class="metric-label">Mood Entries</div>
+    <div class="metric-value">{{ counts.mood }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-icon">🫁</div>
+    <div class="metric-label">Image Scans</div>
+    <div class="metric-value">{{ counts.images }}</div>
+  </div>
+  <div class="metric-card">
+    <div class="metric-icon">💊</div>
+    <div class="metric-label">Drug Checks</div>
+    <div class="metric-value">{{ counts.drugs }}</div>
+  </div>
+</div>
+
+<!-- Charts -->
+<div class="charts-row">
+  <div class="card">
+    <div class="sec-label">Diabetes Risk Distribution</div>
+    <div class="chart-wrap"><canvas id="diabChart"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="sec-label">Mood Score Trend</div>
+    <div class="chart-wrap"><canvas id="moodChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Recent Activity -->
+<div class="card" style="margin-top:1.5rem;">
+  <div class="sec-label">Recent Activity</div>
+  {% if activity %}
+  <table class="data-table">
+    <thead><tr><th>Patient</th><th>Module</th><th>Date</th><th>Result</th></tr></thead>
+    <tbody>
+      {% for row in activity %}
+      <tr>
+        <td>{{ row.Name }}</td>
+        <td><span class="module-badge">{{ row.Module }}</span></td>
+        <td>{{ row.Date }}</td>
+        <td>
+          {% if row.Result in ['Diabetic','Severe'] %}
+            <span class="badge badge-danger">{{ row.Result }}</span>
+          {% elif row.Result in ['Non-Diabetic','Positive','None'] %}
+            <span class="badge badge-success">{{ row.Result }}</span>
+          {% else %}
+            <span class="badge badge-warn">{{ row.Result or '—' }}</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="empty-msg">No activity yet. Add a patient to get started.</p>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const CHART_DEFAULTS = {
+  color: '#8899b4',
+  plugins: { legend: { labels: { color:'#8899b4', font:{family:'Karla'} } } },
+};
+
+// Diabetes Pie
+const diabLabels = {{ diab_labels|safe }};
+const diabCounts = {{ diab_counts|safe }};
+if (diabLabels.length) {
+  new Chart(document.getElementById('diabChart'), {
+    type: 'doughnut',
+    data: {
+      labels: diabLabels,
+      datasets: [{ data: diabCounts,
+        backgroundColor: ['#f87171','#4ade80','#60a5fa'],
+        borderColor: '#0c1220', borderWidth: 3 }]
+    },
+    options: { ...CHART_DEFAULTS, cutout:'60%' }
+  });
+} else {
+  document.getElementById('diabChart').parentElement.innerHTML = '<p class="empty-msg">No predictions yet.</p>';
+}
+
+// Mood Line
+const moodDates  = {{ mood_dates|safe }};
+const moodScores = {{ mood_scores|safe }};
+if (moodDates.length) {
+  new Chart(document.getElementById('moodChart'), {
+    type: 'line',
+    data: {
+      labels: moodDates,
+      datasets: [{ label:'Mood', data: moodScores,
+        borderColor:'#60a5fa', backgroundColor:'rgba(59,130,246,0.08)',
+        pointBackgroundColor:'#93c5fd', tension:0.4, fill:true }]
+    },
+    options: {
+      ...CHART_DEFAULTS,
+      scales: {
+        y: { min:0, max:10, grid:{color:'#0e1a2b'}, ticks:{color:'#8899b4'} },
+        x: { grid:{color:'#0e1a2b'}, ticks:{color:'#8899b4', maxTicksLimit:8} }
+      }
+    }
+  });
+} else {
+  document.getElementById('moodChart').parentElement.innerHTML = '<p class="empty-msg">No mood entries yet.</p>';
+}
+</script>
+{% endblock %}

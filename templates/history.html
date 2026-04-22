@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}History — {{ patient.Name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div class="page-title">📋 Patient History</div>
+  <div class="page-sub">{{ patient.Name }} · {{ patient.Age }}y · {{ patient.Gender }}</div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('diab',this)">🩸 Diabetes</button>
+  <button class="tab-btn" onclick="showTab('mood',this)">🧠 Mood</button>
+  <button class="tab-btn" onclick="showTab('img',this)">🫁 Images</button>
+  <button class="tab-btn" onclick="showTab('drug',this)">💊 Drugs</button>
+</div>
+
+<!-- Diabetes -->
+<div id="tab-diab" class="tab-panel card">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+    <div class="sec-label" style="margin:0;">Diabetes Records</div>
+    <a href="data:text/csv;charset=utf-8,{{ diab_hist|tojson }}"
+       class="btn btn-secondary btn-xs" id="diabCsvBtn">⬇️ Export CSV</a>
+  </div>
+  {% if diab_hist %}
+  <table class="data-table">
+    <thead><tr><th>ID</th><th>Date</th><th>Glucose</th><th>BMI</th><th>Insulin</th><th>Model</th><th>Risk</th><th>Confidence</th></tr></thead>
+    <tbody>
+      {% for r in diab_hist %}
+      <tr>
+        <td><code>{{ r.Record_ID }}</code></td>
+        <td>{{ r.Date }}</td>
+        <td>{{ r.Glucose }}</td>
+        <td>{{ r.BMI }}</td>
+        <td>{{ r.Insulin }}</td>
+        <td><span class="module-badge">{{ r.Model_Used or '—' }}</span></td>
+        <td>
+          {% if r.Risk_Level == 'Diabetic' %}<span class="badge badge-danger">⚠️ Diabetic</span>
+          {% elif r.Risk_Level %}<span class="badge badge-success">✅ Non-Diabetic</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ r.Conf_Pct }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty-msg">No diabetes records found.</p>{% endif %}
+</div>
+
+<!-- Mood -->
+<div id="tab-mood" class="tab-panel card" style="display:none;">
+  <div class="sec-label">Mood & Sentiment Log</div>
+  {% if mood_hist %}
+  <table class="data-table">
+    <thead><tr><th>Date</th><th>Mood</th><th>Sentiment</th><th>Polarity</th><th>Journal</th></tr></thead>
+    <tbody>
+      {% for r in mood_hist %}
+      <tr>
+        <td>{{ r.Date }}</td>
+        <td><span style="font-weight:700;color:#60a5fa;">{{ r.Mood_Score }}/10</span></td>
+        <td>
+          {% if r.Sentiment_Label == 'Positive' %}<span class="badge badge-success">😊 Positive</span>
+          {% elif r.Sentiment_Label == 'Negative' %}<span class="badge badge-danger">😞 Negative</span>
+          {% else %}<span class="badge badge-warn">😐 Neutral</span>{% endif %}
+        </td>
+        <td>{{ r.Sentiment_Score }}</td>
+        <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#8899b4;font-size:0.8rem;">
+          {{ r.Journal_Text or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty-msg">No mood entries found.</p>{% endif %}
+</div>
+
+<!-- Images -->
+<div id="tab-img" class="tab-panel card" style="display:none;">
+  <div class="sec-label">Image Scan Records</div>
+  {% if image_hist %}
+  <table class="data-table">
+    <thead><tr><th>Date</th><th>Type</th><th>Predicted Class</th><th>Confidence</th></tr></thead>
+    <tbody>
+      {% for r in image_hist %}
+      <tr>
+        <td>{{ r.Date }}</td>
+        <td><span class="module-badge">{{ r.Image_Type }}</span></td>
+        <td>{{ r.Predicted_Class }}</td>
+        <td>{{ "%.1f"|format(r.Confidence*100) }}%</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty-msg">No image records found.</p>{% endif %}
+</div>
+
+<!-- Drugs -->
+<div id="tab-drug" class="tab-panel card" style="display:none;">
+  <div class="sec-label">Drug Interaction Checks</div>
+  {% if drug_hist %}
+  <table class="data-table">
+    <thead><tr><th>Date</th><th>Drugs</th><th>Severity</th><th>Details</th></tr></thead>
+    <tbody>
+      {% for r in drug_hist %}
+      <tr>
+        <td>{{ r.Date }}</td>
+        <td style="color:#aab4c8;font-size:0.8rem;">{{ r.Drugs_Input }}</td>
+        <td>
+          {% if r.Severity == 'Severe' %}<span class="badge badge-danger">🚨 Severe</span>
+          {% elif r.Severity == 'Moderate' %}<span class="badge badge-warn">⚠️ Moderate</span>
+          {% else %}<span class="badge badge-success">✅ None</span>{% endif %}
+        </td>
+        <td style="font-size:0.75rem;color:#6b7f99;max-width:200px;">{{ r.Details or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<p class="empty-msg">No drug checks found.</p>{% endif %}
+</div>
+
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-'+id).style.display = 'block';
+  btn.classList.add('active');
+}
+</script>
+{% endblock %}

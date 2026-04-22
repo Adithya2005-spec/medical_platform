@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>{% block title %}Medical AI Platform{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Karla:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"/>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-brand">
+      <span class="brand-icon">🏥</span>
+      <div>
+        <div class="brand-name">Medical AI</div>
+        <div class="brand-sub">Clinical Platform</div>
+      </div>
+    </div>
+    <ul class="nav-list">
+      <li><a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint=='dashboard' %}active{% endif %}"><span class="nav-icon">🏠</span>Dashboard</a></li>
+      <li><a href="{{ url_for('patients') }}"  class="nav-link {% if request.endpoint=='patients' %}active{% endif %}"><span class="nav-icon">👤</span>Patients</a></li>
+      <li><a href="{{ url_for('diabetes') }}"  class="nav-link {% if request.endpoint=='diabetes' %}active{% endif %}"><span class="nav-icon">🩸</span>Diabetes Risk</a></li>
+      <li><a href="{{ url_for('mood') }}"      class="nav-link {% if request.endpoint=='mood' %}active{% endif %}"><span class="nav-icon">🧠</span>Mood Tracker</a></li>
+      <li><a href="{{ url_for('image') }}"     class="nav-link {% if request.endpoint=='image' %}active{% endif %}"><span class="nav-icon">🫁</span>Image AI</a></li>
+      <li><a href="{{ url_for('drugs') }}"     class="nav-link {% if request.endpoint=='drugs' %}active{% endif %}"><span class="nav-icon">💊</span>Drug Checker</a></li>
+    </ul>
+    <div class="sidebar-footer">
+      DB · SQLite &nbsp;|&nbsp; ML · sklearn
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <main class="main-content">
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="toast-container">
+          {% for cat, msg in messages %}
+            <div class="toast toast-{{ cat }}">{{ msg }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
